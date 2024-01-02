@@ -7,11 +7,11 @@ then
   mkdir /root/includes.siteclony
 
   # Downloading the files
-  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/functions.sh -P /root/includes.siteclony/
+  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/functions.sh -P /root/includes.siteclony/
   chmod +x /root/includes.siteclony/functions.sh
-  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/variables.sh -P /root/includes.siteclony/
+  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/variables.sh -P /root/includes.siteclony/
   chmod +x /root/includes.siteclony/variables.sh
-  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/logo.txt -P /root/includes.siteclony/
+  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/logo.txt -P /root/includes.siteclony/
 fi 
 
 # https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/
