@@ -2,18 +2,15 @@
 
 ### Download and make executable
 ```
-wget https://raw.githubusercontent.com/lwgbeckman/cpanel_wp_site_clone/main/site_clone.sh
-```
-```
-chmod +x site_clone.sh
+wget https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/siteclony.sh -P /root/; chmod +x /root/siteclony.sh
 ```
 
 ### Usage
-sh site_clone.sh [-h|V]
+sh siteclony.sh [-h|V]
 
 ### Help
 ```
-sh site_clone.sh -h
+sh siteclony.sh -h
 ```
 ```
 SiteClony is a simple site clone script for WordPress websites on a cPanel server
