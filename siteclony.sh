@@ -1,7 +1,23 @@
 #!/bin/bash
 
+# Download the required files if they don't already exist
+if [ ! -d /root/includes.siteclony ]
+then
+  # Creating the directory
+  mkdir /root/includes.siteclony
+
+  # Downloading the files
+  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/functions.sh -P /root/includes.siteclony/
+  chmod +x /root/includes.siteclony/functions.sh
+  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/variables.sh -P /root/includes.siteclony/
+  chmod +x /root/includes.siteclony/variables.sh
+  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/logo.txt -P /root/includes.siteclony/
+fi 
+
+# https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/
+
 # Include the scripts from ./includes
-for script in $(pwd)/includes/*.sh
+for script in /root/includes.siteclony/*.sh
 do
   source $script
 done
