@@ -7,14 +7,15 @@ then
   mkdir /root/includes.siteclony
 
   # Downloading the files
+  # functions
   wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/functions.sh -P /root/includes.siteclony/
   chmod +x /root/includes.siteclony/functions.sh
+  # variables
   wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/variables.sh -P /root/includes.siteclony/
   chmod +x /root/includes.siteclony/variables.sh
+  # logo
   wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/logo.txt -P /root/includes.siteclony/
-fi 
-
-# https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes/
+fi
 
 # Include the scripts from ./includes
 for script in /root/includes.siteclony/*.sh
@@ -62,7 +63,6 @@ INFO_FILE="$DIR/info.txt"
 ERROR_LOG="$DIR/error.log"
 LOG="$DIR/siteclony.log"
 DOMAIN_SELECTION_LOG="$DIR/domain_selection.log"
-
 
 
 ########
