@@ -1,23 +1,71 @@
 #!/bin/bash
 
-# Download the required files if they don't already exist
-if [ ! -d /root/includes.siteclony ]
-then
-  # Creating the directory
-  mkdir /root/includes.siteclony
+##########
+# Colors #
+##########
 
-  # Downloading the files
-  # functions
-  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/functions.sh -P /root/includes.siteclony/
-  chmod +x /root/includes.siteclony/functions.sh
-  # variables
-  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/variables.sh -P /root/includes.siteclony/
-  chmod +x /root/includes.siteclony/variables.sh
-  # logo
-  wget -q https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony/logo.txt -P /root/includes.siteclony/
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+ENDCOLOR="\e[0m"
+
+
+##################################
+# Working dir and log file setup #
+##################################
+
+unlink /home/temp/siteclony
+dir_date=$(date +'%m-%d-%Y_%X' | tr -d ' ')
+DIR="/home/temp/siteclony_$dir_date"
+mkdir $DIR
+ln -s $DIR /home/temp/siteclony
+
+OPTIONS_FILE="$DIR/domainlist.txt"
+INFO_FILE="$DIR/info.txt"
+ERROR_LOG="$DIR/error.log"
+LOG="$DIR/siteclony.log"
+DOMAIN_SELECTION_LOG="$DIR/domain_selection.log"
+
+
+##################
+# Check for root #
+##################
+
+if [ ! "$(whoami)" = "root" ]
+then
+  echo -e "\n${RED}[ERROR]${ENDCOLOR} The script needs to run as root!\n" | tee -a $ERROR_LOG
+  exit 1
 fi
 
-# Include the scripts from ./includes
+
+###########################
+# Set up all dependencies #
+###########################
+INCLUDES_PATH="/root/includes.siteclony"
+INCLUDES_URL="https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includes.siteclony"
+
+# Download the required files if they don't already exist
+if [ ! -d $INCLUDES_PATH ]
+then
+  echo -e "${YELLOW}[INFO]${ENDCOLOR} Didn't find the required includes in $INCLUDES_PATH.\nDownloading them from $INCLUDES_URL" | tee -a $LOG
+
+  # Creating the directory
+  mkdir $INCLUDES_PATH
+
+  # Downloading the files
+  for file in functions.sh variables.sh logo.txt
+  do
+    wget -q $INCLUDES_URL/$file -P $INCLUDES_PATH
+    if [ $? -ne 0 ]
+    then 
+      echo -e "${RED}[ERROR]${ENDCOLOR} Something went wrong! Couldn't download $file.\nExiting..." | tee -a $ERROR_LOG
+      exit 1
+    fi
+    chmod +x $INCLUDES_PATH/$file
+  done
+fi
+
+# Include the scripts from /root/includes.siteclony
 for script in /root/includes.siteclony/*.sh
 do
   source $script
@@ -46,23 +94,6 @@ done
 
 # Catch SIGINT (Ctrl+C) and execute the 'quit' function 
 trap quit INT
-
-
-#####################
-# Dir and file prep #
-#####################
-
-unlink /home/temp/siteclony
-dir_date=$(date +'%m-%d-%Y_%X' | tr -d ' ')
-DIR="/home/temp/siteclony_$dir_date"
-mkdir $DIR
-ln -s $DIR /home/temp/siteclony
-
-OPTIONS_FILE="$DIR/domainlist.txt"
-INFO_FILE="$DIR/info.txt"
-ERROR_LOG="$DIR/error.log"
-LOG="$DIR/siteclony.log"
-DOMAIN_SELECTION_LOG="$DIR/domain_selection.log"
 
 
 ########

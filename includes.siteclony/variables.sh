@@ -4,16 +4,6 @@
 version="2.2"
 author="George Beckman"
 
-##########
-# Colors #
-##########
-
-RED="\e[31m"
-GREEN="\e[32m"
-YELLOW="\e[33m"
-ENDCOLOR="\e[0m"
-
-
 #############
 # Variables #
 #############
