@@ -230,7 +230,7 @@ then
             echo "The username $selected_username is not a reserved alias!" >> $LOG
             target_username=$selected_username
             
-            # Check if the password meets the requirements
+            # Check if the password meets the server requirements
             pw_strength=$(whmapi1 get_password_strength password="$selected_password" | grep strength: | awk -F ": " '{print $2}')
         
             MIN_PW_STRENGTH=$(whmapi1 getminimumpasswordstrengths | grep createacct | awk -F ": " '{print $2}')
