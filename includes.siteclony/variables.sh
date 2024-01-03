@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Version info
-version="2.2"
-author="George Beckman"
-
 #############
 # Variables #
 #############

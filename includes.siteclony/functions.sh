@@ -13,9 +13,7 @@ quit() {
 Version()
 {
   echo -e "\tSiteClony - cPanel WP site clone script"
-  echo -e "\tCreated by ${YELLOW}$author${ENDCOLOR}"
   echo -e "\tVersion: ${GREEN}$version${ENDCOLOR}\n"
-
 }
 
 # Help 

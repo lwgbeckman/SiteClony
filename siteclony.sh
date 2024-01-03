@@ -1,4 +1,9 @@
 #!/bin/bash
+# gbeckman@liquidweb.com
+# https://github.com/lwgbeckman/SiteClony
+
+# Version info (Jan 3rd 2024)
+version="2.3"
 
 ##########
 # Colors #
@@ -9,6 +14,63 @@ GREEN="\e[32m"
 YELLOW="\e[33m"
 ENDCOLOR="\e[0m"
 
+
+#############################
+# Process the input options #
+#############################
+
+while getopts ":hV" option; do
+  case $option in
+	  h) # Display Help
+       Help
+       exit;;
+	  V) # Print script version
+      Version
+      exit;;	   
+    \?) # Invalid option
+      echo -e "${RED}[ERROR] Invalid option${ENDCOLOR}\n"
+      Help
+      exit;; 
+    esac
+done
+
+
+##################
+# Check for root #
+##################
+
+if [ ! "$(whoami)" = "root" ]
+then
+  echo -e "\n${RED}[ERROR]${ENDCOLOR} The script needs to run as root!\n"
+  exit 1
+fi
+
+####################
+# Check for screen #
+####################
+
+if [ ! "${STY}" ]
+then
+  echo -e "${YELLOW}[WARNING]${ENDCOLOR} Not running in a screen! Restarting in a screen session."
+  # Check if screen is installed, if it's not try to install it
+  if [ ! $(which screen 2> /dev/null) ]
+  then
+    echo -e "[INFO] screen isn't installed. Trying to install it."
+    yum install screen -y -q
+
+    # Checking again to make sure it was installed, if it wasn't, exit.
+    if [ ! $(which screen 2> /dev/null) ]
+    then
+      echo -e "${RED}[ERROR]${ENDCOLOR} Couldn't install screen!\nExiting..."
+      exit 1
+    fi
+  fi
+  # Restart the script in a screen
+  screen -S siteclony bash -c "sh siteclony.sh; bash"
+  exit 0
+fi
+
+# We should be in a screen at this point
 
 ##################################
 # Working dir and log file setup #
@@ -27,17 +89,6 @@ LOG="$DIR/siteclony.log"
 DOMAIN_SELECTION_LOG="$DIR/domain_selection.log"
 
 
-##################
-# Check for root #
-##################
-
-if [ ! "$(whoami)" = "root" ]
-then
-  echo -e "\n${RED}[ERROR]${ENDCOLOR} The script needs to run as root!\n" | tee -a $ERROR_LOG
-  exit 1
-fi
-
-
 ###########################
 # Set up all dependencies #
 ###########################
@@ -47,7 +98,7 @@ INCLUDES_URL="https://raw.githubusercontent.com/lwgbeckman/SiteClony/main/includ
 # Download the required files if they don't already exist
 if [ ! -d $INCLUDES_PATH ]
 then
-  echo -e "${YELLOW}[INFO]${ENDCOLOR} Didn't find the required includes in $INCLUDES_PATH.\nDownloading them from $INCLUDES_URL" | tee -a $LOG
+  echo -e "${YELLOW}[WARNING]${ENDCOLOR} Didn't find the required includes in $INCLUDES_PATH.\nDownloading them from $INCLUDES_URL" | tee -a $LOG
 
   # Creating the directory
   mkdir $INCLUDES_PATH
@@ -70,27 +121,6 @@ for script in /root/includes.siteclony/*.sh
 do
   source $script
 done
-
-
-#############################
-# Process the input options #
-#############################
-
-while getopts ":hV" option; do
-  case $option in
-	  h) # Display Help
-       Help
-       exit;;
-	  V) # Print script version
-      Version
-      exit;;	   
-    \?) # Invalid option
-      echo -e "${RED}[ERROR] Invalid option${ENDCOLOR}\n"
-      Help
-      exit;; 
-    esac
-done
-
 
 # Catch SIGINT (Ctrl+C) and execute the 'quit' function 
 trap quit INT
