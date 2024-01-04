@@ -123,8 +123,6 @@ then
     if [ $? -ne 0 ]
     then 
       echo -e "${YELLOW}[WARNING]${ENDCOLOR} Couldn't download ${RED}$file${ENDCOLOR}! Some things might not look correct, but the script will still work." | tee -a $ERROR_LOG
-    else
-      chmod +x $INCLUDES_PATH/$file
     fi
   done
 fi
@@ -139,7 +137,7 @@ done
 trap quit INT
 
 # Load the dialog config file
-DIALOGRC=$INCLUDES_PATH/dialog.conf
+#DIALOGRC=$INCLUDES_PATH/dialog.conf
 
 
 ########
