@@ -104,15 +104,28 @@ then
   mkdir $INCLUDES_PATH
 
   # Downloading the files
-  for file in functions.sh variables.sh logo.txt
+  # Required files first (exit if we can't download them)
+  for file in functions.sh variables.sh
   do
     wget -q $INCLUDES_URL/$file -P $INCLUDES_PATH
     if [ $? -ne 0 ]
     then 
-      echo -e "${RED}[ERROR]${ENDCOLOR} Something went wrong! Couldn't download $file.\nExiting..." | tee -a $ERROR_LOG
+      echo -e "${RED}[ERROR]${ENDCOLOR} Something went wrong! Couldn't download $file!\nExiting..." | tee -a $ERROR_LOG
       exit 1
     fi
     chmod +x $INCLUDES_PATH/$file
+  done
+
+  # Optional files, not exiting, but some things might not look correct
+  for file in logo.txt dialog.conf
+  do
+    wget -q $INCLUDES_URL/$file -P $INCLUDES_PATH
+    if [ $? -ne 0 ]
+    then 
+      echo -e "${YELLOW}[WARNING]${ENDCOLOR} Couldn't download ${RED}$file${ENDCOLOR}! Some things might not look correct, but the script will still work." | tee -a $ERROR_LOG
+    else
+      chmod +x $INCLUDES_PATH/$file
+    fi
   done
 fi
 
@@ -124,6 +137,9 @@ done
 
 # Catch SIGINT (Ctrl+C) and execute the 'quit' function 
 trap quit INT
+
+# Load the dialog config file
+DIALOGRC=$INCLUDES_PATH/dialog.conf
 
 
 ########
