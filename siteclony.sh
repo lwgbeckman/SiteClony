@@ -2,8 +2,8 @@
 # gbeckman@liquidweb.com
 # https://github.com/lwgbeckman/SiteClony
 
-# Version info (Jan 3rd 2024)
-version="2.3"
+# Version info (Jan 5th 2024)
+version="2.3.4"
 
 ##########
 # Colors #
@@ -175,217 +175,115 @@ then
   # Ask for the new domain name
   dialog --backtitle "Choose a name for the new domain" --inputbox "Choose a name for the new domain " 8 60 2> $DIR/out.tmp
   
-  target_domain=$(cat $DIR/out.tmp)
-  
   #Check if the domain name is valid
-  pattern="^([a-z0-9])(([a-z0-9-]{1,61})?[a-z0-9]{1})?(\.[a-z0-9](([a-z0-9-]{1,61})?[a-z0-9]{1})?)?(\.[a-zA-Z]{2,4})+$"
-  
-  if [[ $target_domain =~ $pattern ]]
+  target_domain=$(cat $DIR/out.tmp)
+  if ! checkDomain $target_domain
   then
-  
-    # The domain name IS valid, continuing
-    echo "$target_domain is a valid domain name!" >> $LOG
-    
-    # Check if the domain already exists on the server
-    match=$(whmapi1 get_domain_info | grep " domain:" | awk -F ": " '{print $2}' | egrep "^$target_domain$")
-  
-    if [ -z $match ]
-    then
-    
-      # The domain DOESN'T exist on the server, continuing
-      echo "The domain doesn't yet exist on the server!" >> $LOG
-      
-      # User selection
-      OPTIONS_FILE="$DIR/accountlist.txt"
-      account_num=$(whmapi1 listaccts | grep user: | wc -l)
-  
-      n=1
-
-      # Prepare the list of options with all accounts
-      for account in $(whmapi1 listaccts | grep user: | awk -F ": " '{print $2}') 
-      do
-	      echo "$n $account OFF" >> $OPTIONS_FILE
-    	  n=$(($n+1))
-      done
-  
-      # Add the option to create a new account and set it as default
-      sed -i "1 i\0 \"Create New Account\" ON" $OPTIONS_FILE
-
-      dialog --backtitle "Select the target account" --radiolist "Select the target account:" 30 40 $account_num --file $OPTIONS_FILE 2> $DIR/out.tmp
-
-  
-      # Check if the "Create New Account" option was selected
-      id=$(cat $DIR/out.tmp)
-  
-      if [ $id -eq 0 ]
-      then
-        
-        # Trying to create a new account
-        
-        # Asking for the new account info
-        random_pass=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-24})
-        suggested_username=$(awk -F. '{print $1}' <<< $target_domain)
-        
-        dialog --backtitle "Provide the information for the new account" --title "Create a new account" --form "New account information" 15 50 3 "Username:" 1 3 "$suggested_username" 1 15 25 25 "Password:" 3 3 "$random_pass" 3 15 25 25 2> $DIR/out.tmp
-  
-        # Checking if the username is valid
-        selected_username=$(head -1 $DIR/out.tmp)
-        if ! checkUsername $selected_username
-        then
-          # The username is not valid
-          clear
-          echo -e "${RED}[ERROR]${ENDCOLOR} The selected Username is invalid!\nExiting..."
-          exit 1
-        fi
-        # The username is valid
-
-        # Checking if the password is valid
-        selected_password=$(tail -1 $DIR/out.tmp)
-        if ! checkPass $selected_password
-        then 
-          #The password is too weak
-          clear
-          echo -e "${RED}[ERROR]${ENDCOLOR} The selected password is invalid!\nExiting..."
-          exit 1
-        fi
-        # The password is valid
-
-        # TODO: Prompt the user to confirm the provided information before creating the account
-
-        # Create the account with the selected information
-        if ! createAcc $selected_username $target_domain $selected_password
-        then
-            # Couldn't create the account, bailing out
-            echo "Exiting..."
-            exit 1
-        fi
-
-        # Created the account without errors ( hopefully )
-        echo -e "${GREEN}Account created!${ENDCOLOR}\n${YELLOW}Username:${ENDCOLOR} $selected_username\n${YELLOW}Domain:${ENDCOLOR} $target_domain\n${YELLOW}Password:${ENDCOLOR} $selected_password\n\n" > $LOG
-
-        getTargetInfo $target_domain
-
-        # Check if an account with the same username already exists
-        # match=$(whmapi1 listaccts | grep user: | awk -F ": " '{print $2}' | egrep "^$selected_username")
-        
-        # if [ -z $match ]
-        # then
-        
-        #   # The username doesn't exist
-        #   echo "The user $selected_username doesn't exist" >> $LOG
-          
-        #   # Checking if it's valid (not one of the reserved usernames)
-        #   match=$(awk -F: '{print $1}' /etc/aliases | tr -d "#" | egrep "^$selected_username$")
-          
-        #   if [ -z $match ]
-        #   then
-          
-        #     # It's not a reserved username, continuing
-        #     echo "The username $selected_username is not a reserved alias!" >> $LOG
-        #     target_username=$selected_username
-            
-            # if checkPass $selected_password
-            # then 
-            #   #The password is strong enough
-            #   clear 
-            #   echo -e "Account created!\nUsername: $selected_username\nDomain: $target_domain\nPassword: $selected_password\n\n" >> $LOG
-            #   # Create the account with the selected information
-            #   #createAcc $selected_username $target_domain $selected_password
-            #   getTargetInfo $target_domain
-            #   getDeets
-            #   exit 0
-            # else
-            #   #The password is too weak
-            #   clear
-            #   echo -e "${RED}[ERROR]${ENDCOLOR} The password is too weak!\nExiting..."
-            #   exit 1
-            # fi
-
-            
-
-            # # Check if the password meets the server requirements
-            # pw_strength=$(whmapi1 get_password_strength password="$selected_password" | grep strength: | awk -F ": " '{print $2}')
-        
-            # MIN_PW_STRENGTH=$(whmapi1 getminimumpasswordstrengths | grep createacct | awk -F ": " '{print $2}')
-        
-            # if [ $pw_strength -ge $MIN_PW_STRENGTH ]
-            # then
-          
-            #   # Both the password and username are valid, creating the account
-            #   echo "The selected password is valid" >> $LOG
-            
-            #   ### Creating the account with the selected username and password
-            #   whmapi1 createacct username="$target_username" domain="$target_domain" password="$selected_password" 2>> $ERROR_LOG 1>> $LOG
-          
-            # else
-          
-            #   # The password is too weak, exiting
-            #   clear
-            #   echo "The selected password is too weak" | tee -a $ERROR_LOG
-            #   exit 0
-            
-            # fi
-              
-        #   else
-          
-        #     # It is a reserved username, exiting
-        #     clear
-        #     echo "The username $selected_username is a reserved alias!" | tee -a $ERROR_LOG
-        #     exit 0
-            
-        #   fi
-          
-        # else
-        
-        #   # The username is invalid, exiting
-        #   clear
-        #   echo "The user $selected_username already exists!" | tee -a $ERROR_LOG
-        #   exit 0
-          
-        # fi
-        
-      else
-  
-        # Creating the subdomain / addon domain
-        
-        # Prepping variables
-        target_account=$(grep -wf $DIR/out.tmp $DIR/accountlist.txt | awk '{print $2}')
-        
-        main_domain=$(uapi --user=$target_account Variables get_user_information | grep domain: | awk -F ": " '{print $2}')
-        
-        vhost_domain="$target_domain.$main_domain"
-        
-        echo -e "\nTarget domain: $target_domain\nTarget account: $target_account\nTarget main domain: $main_domain\nTarget vhost domain: $vhost_domain\n\n" >> $LOG
-        
-        ### Creating the subdomain
-        uapi --user="$target_account" SubDomain addsubdomain domain="$target_domain" rootdomain="$main_domain" 2>> $ERROR_LOG 1>> $LOG
-        
-        ### Creating the addon domain (if possible)
-        whmapi1 create_parked_domain_for_user domain="$target_domain" username="$target_account" web_vhost_domain="$target_domain.$main_domain" 2>> $ERROR_LOG 1>> $LOG
-  
-      fi
-      
-    else 
-      
-      # The domain DOES exist on the server, EXITING
-      clear
-      echo "The domain already exists on the server!" | tee -a $ERROR_LOG
-      exit 0
-      
-    fi
-    
-  else
-  
-    # The domain name is NOT valid, exiting
+    # Domain name is NOT valid
     clear
-    echo "$target_domain is NOT a valid domain name!" | tee -a $ERROR_LOG
-    exit 0
+    echo -e "${RED}[ERROR]${ENDCOLOR} $target_domain is not a valid domain name!\nExiting..." 
+    exit 1
+  fi
+  # Domain name IS valid
+
+  # User selection
+  OPTIONS_FILE="$DIR/accountlist.txt"
+  account_num=$(whmapi1 listaccts | grep user: | wc -l)
+
+  n=1
+
+  # Prepare the list of options with all accounts
+  for account in $(whmapi1 listaccts | grep user: | awk -F ": " '{print $2}') 
+  do
+    echo "$n $account OFF" >> $OPTIONS_FILE
+    n=$(($n+1))
+  done
+
+  # Add the option to create a new account and set it as default
+  sed -i "1 i\0 \"Create New Account\" ON" $OPTIONS_FILE
+
+  dialog --backtitle "Select the target account" --radiolist "Select the target account:" 30 40 $account_num --file $OPTIONS_FILE 2> $DIR/out.tmp
+
+
+  # Check if the "Create New Account" option was selected
+  id=$(cat $DIR/out.tmp)
+
+  if [ $id -eq 0 ]
+  then
     
+    # Trying to create a new account
+    
+    # Asking for the new account info
+    random_pass=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-24})
+    suggested_username=$(awk -F. '{print $1}' <<< $target_domain)
+    
+    dialog --backtitle "Provide the information for the new account" --title "Create a new account" --form "New account information" 15 50 3 "Username:" 1 3 "$suggested_username" 1 15 25 25 "Password:" 3 3 "$random_pass" 3 15 25 25 2> $DIR/out.tmp
+
+    # Checking if the username is valid
+    selected_username=$(head -1 $DIR/out.tmp)
+    if ! checkUsername $selected_username
+    then
+      # The username is not valid
+      clear
+      echo -e "${RED}[ERROR]${ENDCOLOR} The selected Username is invalid!\nExiting..."
+      exit 1
+    fi
+    # The username is valid
+
+    # Checking if the password is valid
+    selected_password=$(tail -1 $DIR/out.tmp)
+    if ! checkPass $selected_password
+    then 
+      #The password is too weak
+      clear
+      echo -e "${RED}[ERROR]${ENDCOLOR} The selected password is invalid!\nExiting..."
+      exit 1
+    fi
+    # The password is valid
+
+    # TODO: Prompt the user to confirm the provided information before creating the account and starting the clone
+    #dialog --colors --yesno "\n\nAre you sure you want to proceed with this configuration?" 10 40
+
+    # Create the account with the selected information
+    if ! createAcc $selected_username $target_domain $selected_password
+    then
+        # Couldn't create the account, bailing out
+        echo "Exiting..."
+        exit 1
+    fi
+
+    # Created the account without errors ( hopefully )
+    echo -e "${GREEN}Account created!${ENDCOLOR}\n${YELLOW}Username:${ENDCOLOR} $selected_username\n${YELLOW}Domain:${ENDCOLOR} $target_domain\n${YELLOW}Password:${ENDCOLOR} $selected_password\n\n" > $LOG
+
+    if ! getTargetInfo $target_domain
+    then
+      # Something went wrong, most likely couldn't find the docroot for some reason
+      clear
+      echo -e "${RED}[ERROR]${ENDCOLOR} Something went wrong! Most likely couldn't find the docroot. (${RED}cat $ERROR_LOG${ENDCOLOR})\nExiting..."
+      exit 1
+    fi
+
+  else
+
+    # Creating the subdomain / addon domain
+    
+    # Prepping variables
+    target_account=$(grep -wf $DIR/out.tmp $DIR/accountlist.txt | awk '{print $2}')
+    
+    main_domain=$(uapi --user=$target_account Variables get_user_information | grep domain: | awk -F ": " '{print $2}')
+    
+    vhost_domain="$target_domain.$main_domain"
+    
+    echo -e "\nTarget domain: $target_domain\nTarget account: $target_account\nTarget main domain: $main_domain\nTarget vhost domain: $vhost_domain\n\n" >> $LOG
+    
+    ### Creating the subdomain
+    uapi --user="$target_account" SubDomain addsubdomain domain="$target_domain" rootdomain="$main_domain" 2>> $ERROR_LOG 1>> $LOG
+    
+    ### Creating the addon domain (if possible)
+    whmapi1 create_parked_domain_for_user domain="$target_domain" username="$target_account" web_vhost_domain="$target_domain.$main_domain" 2>> $ERROR_LOG 1>> $LOG
+
   fi
 
-  #target_domain=$(grep -wf $DIR/out.tmp $DIR/domainlist.txt | awk '{print $2}')
-  #target_account=$(egrep "^$target_domain:" /etc/userdatadomains | awk -F " |==" '{print $2}')
-  
 fi
 
 # Remove the selected domain from the list 

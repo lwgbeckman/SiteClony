@@ -157,7 +157,6 @@ getSourceInfo() {
 getTargetInfo() {
   
   target_server=$(hostname)
-  #target_domain=$(grep -wf $DIR/out.tmp $OPTIONS_FILE | awk '{print $2}')
   target_domain=$1
   target_account=$(egrep "^$target_domain:" /etc/userdatadomains | awk -F " |==" '{print $2}')
   echo -e "Selected $target_domain ($target_account)" >> $DOMAIN_SELECTION_LOG
@@ -166,8 +165,14 @@ getTargetInfo() {
   sed -i "/ $target_domain /d" $OPTIONS_FILE
   
   target_docroot=$(awk -F "==|:" '{print $1, $6}' /etc/userdatadomains | egrep "^$target_domain " | cut -d " " -f 2)
-  validate "$target_docroot" "Unable to find the document root" "Docroot found:"
-  
+  # Make sure the docroot exists
+  if [[ -z $target_docroot ]]
+  then
+    # The docroot couldn't be found, throw out an error and return out of the function
+    echo $2 >> $ERROR_LOG
+    return 1
+  fi
+
   # Checking if wp-config already exists
   target_config=$(find $target_docroot -type f -name wp-config.php | head -1)
   if [ -z $target_config ]
@@ -192,6 +197,39 @@ getTargetInfo() {
 # New target domain #
 #####################
 
+checkDomain(){
+
+  domain=$1
+
+  # Regex that should match only a valid, full domain name
+  pattern="^([a-z0-9])(([a-z0-9-]{1,61})?[a-z0-9]{1})?(\.[a-z0-9](([a-z0-9-]{1,61})?[a-z0-9]{1})?)?(\.[a-zA-Z]{2,4})+$"
+  
+  if [[ $domain =~ $pattern ]]
+  then
+  
+    # The domain name IS valid
+    echo "$domain is a valid domain name!" >> $LOG
+    
+    # Check if the domain already exists on the server
+    match=$(whmapi1 get_domain_info | grep " domain:" | awk -F ": " '{print $2}' | egrep "^$domain$")
+  
+    if [ -z $match ]
+    then
+      # The domain DOESN'T exist on the server and it is valid
+      echo "The domain doesn't yet exist on the server!" >> $LOG
+      return 0
+    else
+      # The domain DOES exist on the server
+      echo "${RED}[ERROR]${ENDCOLOR} $domain already exists on the server!" >> $ERROR_LOG
+      return 1
+    fi
+
+  else
+    # The domain name is NOT valid
+    echo "${RED}[ERROR]${ENDCOLOR} $domain is NOT a valid domain name!" >> $ERROR_LOG
+    return 1
+  fi
+}
 
 ###############
 # New Account #
