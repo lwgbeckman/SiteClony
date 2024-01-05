@@ -250,6 +250,8 @@ then
         fi
         # The password is valid
 
+        # TODO: Prompt the user to confirm the provided information before creating the account
+
         # Create the account with the selected information
         if ! createAcc $selected_username $target_domain $selected_password
         then
