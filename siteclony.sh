@@ -255,15 +255,14 @@ then
         # Create the account with the selected information
         if ! createAcc $selected_username $target_domain $selected_password
         then
-          # Couldn't create the account, bailing out
-          clear
-          echo -e "${RED}[ERROR]${ENDCOLOR} Something went wrong while creating the account! Check $ERROR_LOG for more information. ( cat $ERROR_LOG )\nExiting..."
-          exit 1
+            # Couldn't create the account, bailing out
+            echo "Exiting..."
+            exit 1
         fi
 
         # Created the account without errors ( hopefully )
-        echo -e "${GREEN}Account created!${ENDCOLOR}\n${YELLOW}Username:${ENDCOLOR} $selected_username\n${YELLOW}Domain:${ENDCOLOR} $target_domain\n${YELLOW}Password:${ENDCOLOR} $selected_password\n\n" >> $LOG
-        
+        echo -e "${GREEN}Account created!${ENDCOLOR}\n${YELLOW}Username:${ENDCOLOR} $selected_username\n${YELLOW}Domain:${ENDCOLOR} $target_domain\n${YELLOW}Password:${ENDCOLOR} $selected_password\n\n" > $LOG
+
         getTargetInfo $target_domain
 
         # Check if an account with the same username already exists

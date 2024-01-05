@@ -123,6 +123,12 @@ targetDomainSelection() {
 # Domain info #
 ###############
 
+# TODO: Refactor these 2 functions into a single, more generic one
+# It should just be 'getDomainInfo' and it takes in the domain as a parameter
+# It also needs to know if it's checking a source or target domain
+# We can generate wp-config info for target, but need to exit if the source doesn't have it
+# The simplest way would be to have the source/target be another parameter, can just be a string ¯\_(ツ)_/¯
+
 # Generate source domain info
 getSourceInfo() {
 
@@ -132,7 +138,6 @@ getSourceInfo() {
   echo -e "Selected $source_domain ($source_account)" >> $DOMAIN_SELECTION_LOG
   
   # Remove the selected domain from the list 
-  #sed -i "/^$(cat $DIR/out.tmp) /d" $OPTIONS_FILE
   sed -i "/ $source_domain /d" $OPTIONS_FILE
   
   source_docroot=$(awk -F "==|:" '{print $1, $6}' /etc/userdatadomains | egrep "^$source_domain " | cut -d " " -f 2)
@@ -158,7 +163,6 @@ getTargetInfo() {
   echo -e "Selected $target_domain ($target_account)" >> $DOMAIN_SELECTION_LOG
   
   # Remove the selected domain from the list 
-  #sed -i "/^$(cat $DIR/out.tmp) /d" $OPTIONS_FILE
   sed -i "/ $target_domain /d" $OPTIONS_FILE
   
   target_docroot=$(awk -F "==|:" '{print $1, $6}' /etc/userdatadomains | egrep "^$target_domain " | cut -d " " -f 2)
@@ -168,14 +172,14 @@ getTargetInfo() {
   target_config=$(find $target_docroot -type f -name wp-config.php | head -1)
   if [ -z $target_config ]
   then
-    # wp-config already exists, using the DB info from there
+    # wp-config doesn't exist, generating new DB info
     echo -e "No config found. Generating new DB info. Assuming config will be: $target_docroot/wp-config.php" >> $DOMAIN_SELECTION_LOG
     target_config="$target_docroot/wp-config.php"
     target_DB_name="$(awk -F. '{print $1}' <<< $target_domain)_wp$((RANDOM % 999 + 100))"
     target_DB_user=$target_DB_name
-    target_DB_pass=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-24})
+    target_DB_pass=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c 24)
   else
-    # wp-config doesn't exist, generating new DB info
+    # wp-config already exists, using the DB info from there
     echo -e "Config found: $target_config" >> $DOMAIN_SELECTION_LOG
     target_DB_name=$(grep DB_NAME $target_config | awk -F "'" '{print $4}')
     target_DB_user=$(grep DB_USER $target_config | awk -F "'" '{print $4}')
@@ -262,12 +266,15 @@ createAcc(){
   ### Creating the account with the selected username and password
   whmapi1 createacct username="$new_user" domain="$new_domain" password="$new_pass" > $DIR/out.tmp
   result=$(grep "result: " $DIR/out.tmp | awk '{print $2}')
-  
+
   if [[ result -eq 0 ]]
   then
     # Something went wrong, couldn't create the account
     # TODO: implement checking on what went wrong and throw the user back to that selection screen
-    cat $DIR/out.tmp >> $ERROR_LOG
+    cat $DIR/out.tmp > $ERROR_LOG
+    reason=$(grep "reason: " $DIR/out.tmp | awk -F": " '{print $2}')
+    clear
+    echo -e "${RED}[ERROR]${ENDCOLOR} $reason (${RED}cat $ERROR_LOG${ENDCOLOR})"
     return 1
   fi
 
