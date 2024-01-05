@@ -127,8 +127,14 @@ then
   done
 fi
 
+################################################################################################
+### DEV MODE ONLY                                                                             ##
+### Using the dev directory in /home/SiteClony/includes.siteclony while working on the script ##
+################################################################################################
+INCLUDES_PATH=/home/SiteClony/includes.siteclony
+
 # Include the scripts from /root/includes.siteclony
-for script in /root/includes.siteclony/*.sh
+for script in $INCLUDES_PATH/*.sh
 do
   source $script
 done
@@ -137,7 +143,7 @@ done
 trap quit INT
 
 # Load the dialog config file
-#DIALOGRC=$INCLUDES_PATH/dialog.conf
+DIALOGRC=$INCLUDES_PATH/dialog.conf
 
 
 ########
@@ -149,12 +155,12 @@ max_domains=$(whmapi1 get_domain_info | grep " domain:" | wc -l)
 
 # Select the source domain
 echo -e "Selecting the SOURCE domain\n" >> $DOMAIN_SELECTION_LOG
-get_domain_options
+getDomainOptions
 sourceDomainSelection
 
 # Select the target domain
 echo -e "\nSelecting the TARGET domain\n" >> $DOMAIN_SELECTION_LOG
-get_domain_options
+getDomainOptions
 # Remove the source domain from the list
 sed -i "/ $source_domain /d" $OPTIONS_FILE
 targetDomainSelection
@@ -214,7 +220,7 @@ then
       if [ $id -eq 0 ]
       then
         
-        # Creating the new account
+        # Trying to create a new account
         
         # Asking for the new account info
         random_pass=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-24})
@@ -222,68 +228,120 @@ then
         
         dialog --backtitle "Provide the information for the new account" --title "Create a new account" --form "New account information" 15 50 3 "Username:" 1 3 "$suggested_username" 1 15 25 25 "Password:" 3 3 "$random_pass" 3 15 25 25 2> $DIR/out.tmp
   
+        # Checking if the username is valid
         selected_username=$(head -1 $DIR/out.tmp)
-        selected_password=$(tail -1 $DIR/out.tmp)
-  
-        # Check if an account with the same username already exists
-        match=$(whmapi1 listaccts | grep user: | awk -F ": " '{print $2}' | egrep "^$selected_username")
-        
-        if [ -z $match ]
+        if ! checkUsername $selected_username
         then
-        
-          # The username doesn't exist
-          echo "The user $selected_username doesn't exist" >> $LOG
-          
-          # Checking if it's valid (not one of the reserved usernames)
-          match=$(awk -F: '{print $1}' /etc/aliases | tr -d "#" | egrep "^$selected_username$")
-          
-          if [ -z $match ]
-          then
-          
-            # It's not a reserved username, continuing
-            echo "The username $selected_username is not a reserved alias!" >> $LOG
-            target_username=$selected_username
-            
-            # Check if the password meets the server requirements
-            pw_strength=$(whmapi1 get_password_strength password="$selected_password" | grep strength: | awk -F ": " '{print $2}')
-        
-            MIN_PW_STRENGTH=$(whmapi1 getminimumpasswordstrengths | grep createacct | awk -F ": " '{print $2}')
-        
-            if [ $pw_strength -ge $MIN_PW_STRENGTH ]
-            then
-          
-              # Both the password and username are valid, creating the account
-              echo "The selected password is valid" >> $LOG
-            
-              ### Creating the account with the selected username and password
-              whmapi1 createacct username="$target_username" domain="$target_domain" password="$selected_password" 2>> $ERROR_LOG 1>> $LOG
-          
-            else
-          
-              # The password is too weak, exiting
-              clear
-              echo "The selected password is too weak" | tee -a $ERROR_LOG
-              exit 0
-            
-            fi
-              
-          else
-          
-            # It is a reserved username, exiting
-            clear
-            echo "The username $selected_username is a reserved alias!" | tee -a $ERROR_LOG
-            exit 0
-            
-          fi
-          
-        else
-        
-          # The username is invalid, exiting
+          # The username is not valid
           clear
-          echo "The user $selected_username already exists!" | tee -a $ERROR_LOG
-          exit 0
-          
+          echo -e "${RED}[ERROR]${ENDCOLOR} The selected Username is invalid!\nExiting..."
+          exit 1
         fi
+        # The username is valid
+
+        # Checking if the password is valid
+        selected_password=$(tail -1 $DIR/out.tmp)
+        if ! checkPass $selected_password
+        then 
+          #The password is too weak
+          clear
+          echo -e "${RED}[ERROR]${ENDCOLOR} The selected password is invalid!\nExiting..."
+          exit 1
+        fi
+        # The password is valid
+
+        # Create the account with the selected information
+        if ! createAcc $selected_username $target_domain $selected_password
+        then
+          # Couldn't create the account, bailing out
+          clear
+          echo -e "${RED}[ERROR]${ENDCOLOR} Something went wrong while creating the account! Check $ERROR_LOG for more information. ( cat $ERROR_LOG )\nExiting..."
+          exit 1
+        fi
+
+        # Created the account without errors ( hopefully )
+        echo -e "${GREEN}Account created!${ENDCOLOR}\n${YELLOW}Username:${ENDCOLOR} $selected_username\n${YELLOW}Domain:${ENDCOLOR} $target_domain\n${YELLOW}Password:${ENDCOLOR} $selected_password\n\n" >> $LOG
+        
+        getTargetInfo $target_domain
+
+        # Check if an account with the same username already exists
+        # match=$(whmapi1 listaccts | grep user: | awk -F ": " '{print $2}' | egrep "^$selected_username")
+        
+        # if [ -z $match ]
+        # then
+        
+        #   # The username doesn't exist
+        #   echo "The user $selected_username doesn't exist" >> $LOG
+          
+        #   # Checking if it's valid (not one of the reserved usernames)
+        #   match=$(awk -F: '{print $1}' /etc/aliases | tr -d "#" | egrep "^$selected_username$")
+          
+        #   if [ -z $match ]
+        #   then
+          
+        #     # It's not a reserved username, continuing
+        #     echo "The username $selected_username is not a reserved alias!" >> $LOG
+        #     target_username=$selected_username
+            
+            # if checkPass $selected_password
+            # then 
+            #   #The password is strong enough
+            #   clear 
+            #   echo -e "Account created!\nUsername: $selected_username\nDomain: $target_domain\nPassword: $selected_password\n\n" >> $LOG
+            #   # Create the account with the selected information
+            #   #createAcc $selected_username $target_domain $selected_password
+            #   getTargetInfo $target_domain
+            #   getDeets
+            #   exit 0
+            # else
+            #   #The password is too weak
+            #   clear
+            #   echo -e "${RED}[ERROR]${ENDCOLOR} The password is too weak!\nExiting..."
+            #   exit 1
+            # fi
+
+            
+
+            # # Check if the password meets the server requirements
+            # pw_strength=$(whmapi1 get_password_strength password="$selected_password" | grep strength: | awk -F ": " '{print $2}')
+        
+            # MIN_PW_STRENGTH=$(whmapi1 getminimumpasswordstrengths | grep createacct | awk -F ": " '{print $2}')
+        
+            # if [ $pw_strength -ge $MIN_PW_STRENGTH ]
+            # then
+          
+            #   # Both the password and username are valid, creating the account
+            #   echo "The selected password is valid" >> $LOG
+            
+            #   ### Creating the account with the selected username and password
+            #   whmapi1 createacct username="$target_username" domain="$target_domain" password="$selected_password" 2>> $ERROR_LOG 1>> $LOG
+          
+            # else
+          
+            #   # The password is too weak, exiting
+            #   clear
+            #   echo "The selected password is too weak" | tee -a $ERROR_LOG
+            #   exit 0
+            
+            # fi
+              
+        #   else
+          
+        #     # It is a reserved username, exiting
+        #     clear
+        #     echo "The username $selected_username is a reserved alias!" | tee -a $ERROR_LOG
+        #     exit 0
+            
+        #   fi
+          
+        # else
+        
+        #   # The username is invalid, exiting
+        #   clear
+        #   echo "The user $selected_username already exists!" | tee -a $ERROR_LOG
+        #   exit 0
+          
+        # fi
         
       else
   
@@ -334,7 +392,7 @@ sed -i "/^$(cat $DIR/out.tmp) /d" $OPTIONS_FILE
 
 clear
 
-get_deets
+getDeets
 
 
 

@@ -30,7 +30,7 @@ Help()
 }
 
 # Pre clone info
-get_deets() {
+getDeets() {
 
   echo -e "${RED}SOURCE${ENDCOLOR}\n\nServer: $source_server\nDomain: $source_domain\nAccount: $source_account\nDocroot: $source_docroot\n\nDB name: $source_DB_name\nDB user: $source_DB_user\nDB pass: $source_DB_pass\n\n\n"
   echo -e "${GREEN}TARGET${ENDCOLOR}\n\nServer: $target_server\nDomain: $target_domain\nAccount: $target_account\nDocroot: $target_docroot\n\nDB name: $target_DB_name\nDB user: $target_DB_user\nDB pass: $target_DB_pass\n\n"
@@ -38,25 +38,21 @@ get_deets() {
 }
 
 
-# Check if a doamin is valid, if not prompt for a new selection
+# Check if a domain is valid, if not prompt for a new selection
 validate() {
   if [[ -z $1 ]]
   then
-  
     # The variable is empty, throw out an error and ask to choose a new domain
     echo $2 >> $DOMAIN_SELECTION_LOG
     clear
     
     if dialog --colors --no-label "Exit" --yes-label "Ok" --yesno "\Z1$2 \Zn\n\nDo you want to choose a new domain?" 10 40
     then
-    
       echo -e "\nSelecting a new domain" >> $DOMAIN_SELECTION_LOG
       sourceDomainSelection
-      
     else
       clear
       exit 0
-      
     fi
   else
     echo -e "$3 $1" >> $DOMAIN_SELECTION_LOG
@@ -69,7 +65,7 @@ validate() {
 ####################
 
 # Domain options generation logic
-get_domain_options() {
+getDomainOptions() {
 
   > $OPTIONS_FILE 
   n=1
@@ -114,7 +110,12 @@ targetDomainSelection() {
     quit
   fi 
   
-  getTargetInfo
+  id=$(cat $DIR/out.tmp)
+  if [ ! $id -eq 0 ]
+  then
+    domain=$(grep -wf $DIR/out.tmp $OPTIONS_FILE | awk '{print $2}')
+    getTargetInfo $domain
+  fi
 }
 
 
@@ -151,7 +152,8 @@ getSourceInfo() {
 getTargetInfo() {
   
   target_server=$(hostname)
-  target_domain=$(grep -wf $DIR/out.tmp $OPTIONS_FILE | awk '{print $2}')
+  #target_domain=$(grep -wf $DIR/out.tmp $OPTIONS_FILE | awk '{print $2}')
+  target_domain=$1
   target_account=$(egrep "^$target_domain:" /etc/userdatadomains | awk -F " |==" '{print $2}')
   echo -e "Selected $target_domain ($target_account)" >> $DOMAIN_SELECTION_LOG
   
@@ -181,3 +183,95 @@ getTargetInfo() {
   fi
   
 }
+
+#####################
+# New target domain #
+#####################
+
+
+###############
+# New Account #
+###############
+
+# Check if the username is valid (Doesn't exist yet and is not a reserved alias)
+checkUsername(){
+
+  username=$1
+
+  # Check if an account with the same username already exists
+  match=$(whmapi1 listaccts | grep user: | awk -F ": " '{print $2}' | egrep "^$username")
+  
+  if [ -z $match ]
+  then
+    # The username doesn't exist, continuing
+    # Checking if it's valid (not one of the reserved usernames)
+    match=$(awk -F: '{print $1}' /etc/aliases | tr -d "#" | egrep "^$username$")
+    
+    if [ -z $match ]
+    then
+      # It's not a reserved username, returning
+      target_username=$username
+      return 0
+    else
+      # It is a reserved username, exiting
+      clear
+      echo -e "${RED}[ERROR]${ENDCOLOR} The username $username is a reserved alias!\nExiting..." >> $ERROR_LOG
+      return 1
+    fi
+
+  else
+    # The username is invalid, exiting
+    clear
+    echo -e "${RED}[ERROR]${ENDCOLOR} The user $username already exists!\nExiting..." >> $ERROR_LOG
+    return 1
+  fi
+}
+
+# Check if the password meets the server requirements
+checkPass(){
+
+  pass=$1
+
+  # Get info about required pass strength and selected pass strength
+  MIN_PW_STRENGTH=$(whmapi1 getminimumpasswordstrengths | grep createacct | awk -F ": " '{print $2}')
+  pw_strength=$(whmapi1 get_password_strength password="$pass" | grep strength: | awk -F ": " '{print $2}')
+
+  if [ $pw_strength -ge $MIN_PW_STRENGTH ]
+  then
+
+    # The pass is strong enough
+    echo "The selected password is valid" >> $LOG
+    return 0
+
+  else
+
+    # The password is too weak
+    echo "${RED}[ERROR]${ENDCOLOR}The selected password is too weak!" >> $ERROR_LOG
+    return 1
+
+  fi
+}
+
+# Create the cPanela account
+createAcc(){
+
+  new_user=$1
+  new_domain=$2
+  new_pass=$3
+
+  ### Creating the account with the selected username and password
+  whmapi1 createacct username="$new_user" domain="$new_domain" password="$new_pass" > $DIR/out.tmp
+  result=$(grep "result: " $DIR/out.tmp | awk '{print $2}')
+  
+  if [[ result -eq 0 ]]
+  then
+    # Something went wrong, couldn't create the account
+    # TODO: implement checking on what went wrong and throw the user back to that selection screen
+    cat $DIR/out.tmp >> $ERROR_LOG
+    return 1
+  fi
+
+  return 0
+}
+
+

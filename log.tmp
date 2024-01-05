@@ -1,0 +1,8 @@
+--- 
+metadata: 
+  command: createacct
+  output: 
+    raw: ~
+  reason: (XID bttqyr) The domain “gbeckman.xyz” already exists in the userdata.
+  result: 0
+  version: 1
