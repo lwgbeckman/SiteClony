@@ -131,7 +131,7 @@ fi
 ### DEV MODE ONLY                                                                             ##
 ### Using the dev directory in /home/SiteClony/includes.siteclony while working on the script ##
 ################################################################################################
-INCLUDES_PATH=/home/SiteClony/includes.siteclony
+#INCLUDES_PATH=/home/SiteClony/includes.siteclony
 
 # Include the scripts from /root/includes.siteclony
 for script in $INCLUDES_PATH/*.sh
