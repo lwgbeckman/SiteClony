@@ -11,6 +11,7 @@ version="2.3.4"
 
 RED="\e[31m"
 GREEN="\e[32m"
+BLUE="\e[34m"
 YELLOW="\e[33m"
 ENDCOLOR="\e[0m"
 
@@ -131,7 +132,7 @@ fi
 ### DEV MODE ONLY                                                                             ##
 ### Using the dev directory in /home/SiteClony/includes.siteclony while working on the script ##
 ################################################################################################
-#INCLUDES_PATH=/home/SiteClony/includes.siteclony
+INCLUDES_PATH=/home/SiteClony/includes.siteclony
 
 # Include the scripts from /root/includes.siteclony
 for script in $INCLUDES_PATH/*.sh
@@ -217,7 +218,12 @@ then
     random_pass=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-24})
     suggested_username=$(awk -F. '{print $1}' <<< $target_domain)
     
-    dialog --backtitle "Provide the information for the new account" --title "Create a new account" --form "New account information" 15 50 3 "Username:" 1 3 "$suggested_username" 1 15 25 25 "Password:" 3 3 "$random_pass" 3 15 25 25 2> $DIR/out.tmp
+    # dialog --backtitle "Provide the information for the new account" --title "Create a new account" --form "New account information" 15 50 3 "Username:" 1 3 "$suggested_username" 1 15 25 25 "Password:" 3 3 "$random_pass" 3 15 25 25 2> $DIR/out.tmp
+
+    dialog --backtitle "Provide the information for the new account" --title "Create a new account" --form "New account information" 15 50 3 \
+    "Username:" 1 3 "$suggested_username" 1 15 25 25 \
+    "Password:" 3 3 "$random_pass" 3 15 25 25 \
+    2> $DIR/out.tmp
 
     # Checking if the username is valid
     selected_username=$(head -1 $DIR/out.tmp)
@@ -240,9 +246,6 @@ then
       exit 1
     fi
     # The password is valid
-
-    # TODO: Prompt the user to confirm the provided information before creating the account and starting the clone
-    #dialog --colors --yesno "\n\nAre you sure you want to proceed with this configuration?" 10 40
 
     # Create the account with the selected information
     if ! createAcc $selected_username $target_domain $selected_password
@@ -271,7 +274,7 @@ then
     target_account=$(grep -wf $DIR/out.tmp $DIR/accountlist.txt | awk '{print $2}')
     
     main_domain=$(uapi --user=$target_account Variables get_user_information | grep domain: | awk -F ": " '{print $2}')
-    
+
     vhost_domain="$target_domain.$main_domain"
     
     echo -e "\nTarget domain: $target_domain\nTarget account: $target_account\nTarget main domain: $main_domain\nTarget vhost domain: $vhost_domain\n\n" >> $LOG
@@ -289,10 +292,35 @@ fi
 # Remove the selected domain from the list 
 sed -i "/^$(cat $DIR/out.tmp) /d" $OPTIONS_FILE
 
+
+# TODO: Make the deets editable 
+# NOTE: Need to do more error checking afterwards...
+#
+# dialog --backtitle "Deets review" --title "Gathered information" --form "Do you want to proceed with this information? (<TAB> to jump to OK/Cancel)" 25 100 17 \
+# "Source Domain:" 1 3 "$source_domain" 1 25 100 50 \
+# "Source Account:" 2 3 "$source_account" 2 25 100 50 \
+# "Source Docroot:" 3 3 "$source_docroot" 3 25 100 50 \
+# "DB name:" 5 3 "$source_DB_name" 5 25 100 50 \
+# "DB user:" 6 3 "$source_DB_user" 6 25 100 50 \
+# "DB pass:" 7 3 "$source_DB_pass" 7 25 100 50 \
+# 2> $DIR/out.tmp
+
+
+# Present the deets and ask to continue or cancel
+if ! dialog --colors --yesno "Do you want to start the site clone with this configuration?\n\n\n\Zb\Z1SOURCE\Zn\n\n\Z4Server:\Zn  $source_server\n\Z4Domain:\Zn  $source_domain\n\Z4Account:\Zn $source_account\n\Z4Docroot:\Zn $source_docroot\n\n\Z4DB name:\Zn $source_DB_name\n\Z4DB user:\Zn $source_DB_user\n\Z4DB pass:\Zn $source_DB_pass\n\n\Zb\Z2TARGET\Zn\n\n\Z4Server:\Zn  $target_server\n\Z4Domain:\Zn  $target_domain\n\Z4Account:\Zn $target_account\n\Z4Docroot:\Zn $target_docroot\n\n\Z4DB name:\Zn $target_DB_name\n\Z4DB user:\Zn $target_DB_user\n\Z4DB pass:\Zn $target_DB_pass" 30 75
+then
+  clear
+  echo "Bye!"
+  exit 1
+fi
+
 clear
-
+echo -e "\n${BLUE}Copy the deets and paste them in your ticket!${ENDCOLOR}\n"
 getDeets
+echo -e "${GREEN}Press any key to continue...${ENDCOLOR}"
+read -p ""
 
+echo "Starting the clone"
 
 
 

@@ -294,7 +294,7 @@ checkPass(){
   fi
 }
 
-# Create the cPanela account
+# Create the cPanel account
 createAcc(){
 
   new_user=$1
